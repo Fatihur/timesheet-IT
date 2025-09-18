@@ -32,7 +32,7 @@
         <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
             <div class="text-center mb-8">
                 <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">📄 Ekstraktor Data Timesheet</h1>
-                <p class="text-gray-600 mt-2">Unggah file PDF untuk menampilkan semua absensi (hanya status OFF yang akan ditampilkan).</p>
+                <p class="text-gray-600 mt-2">Unggah file PDF untuk menampilkan semua absensi (hanya status 'OFF' dan '-' yang akan ditampilkan).</p>
             </div>
 
             <!-- Upload Section -->
@@ -185,7 +185,7 @@
          * Memanggil Gemini API untuk mengekstrak data dari gambar.
          */
         async function callGeminiAPI(base64ImageData) {
-            const apiKey = "AIzaSyBvt7AwUfkdNGGW1jM1DCy85uJFKWmA180"; // Kunci API akan disediakan secara otomatis
+            const apiKey = ""; // Kunci API akan disediakan secara otomatis
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             
             const payload = {
@@ -329,13 +329,18 @@
         
         /**
          * Memberi format pada kolom tanda tangan untuk tampilan yang lebih baik.
-         * Hanya menampilkan status 'OFF'.
+         * Hanya menampilkan status 'OFF' dan '-'.
          */
         function formatTandaTangan(status) {
             if (!status) return ''; // Kosongkan jika tidak ada status
-            const upperStatus = status.toUpperCase();
+            const trimmedStatus = status.trim();
+            const upperStatus = trimmedStatus.toUpperCase();
+
             if (upperStatus === 'OFF') {
                 return `<span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">${status}</span>`;
+            }
+             if (trimmedStatus === '-') {
+                 return `<span class="bg-amber-100 text-amber-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">${status}</span>`;
             }
             return ''; // Kosongkan untuk status lainnya
         }
@@ -348,14 +353,23 @@
                 statusDisplay.textContent = 'Tidak ada data untuk diunduh.';
                 return;
             }
-            const dataForExport = extractedData.map(item => ({
-                Tanggal: item.tanggal,
-                Nama: item.nama,
-                "Jam Masuk": item.jam_masuk,
-                "Jam Keluar": item.jam_keluar,
-                // Logika filter untuk file Excel
-                "Tanda Tangan": item.tanda_tangan.toUpperCase() === 'OFF' ? 'OFF' : ''
-            }));
+            const dataForExport = extractedData.map(item => {
+                const tandaTanganStatus = item.tanda_tangan;
+                let displayStatus = '';
+                if (tandaTanganStatus.toUpperCase() === 'OFF') {
+                    displayStatus = 'OFF';
+                } else if (tandaTanganStatus.trim() === '-') {
+                    displayStatus = '-';
+                }
+                
+                return {
+                    Tanggal: item.tanggal,
+                    Nama: item.nama,
+                    "Jam Masuk": item.jam_masuk,
+                    "Jam Keluar": item.jam_keluar,
+                    "Tanda Tangan": displayStatus
+                };
+            });
 
             const worksheet = XLSX.utils.json_to_sheet(dataForExport);
             const workbook = XLSX.utils.book_new();
@@ -381,3 +395,4 @@
     </script>
 </body>
 </html>
+
